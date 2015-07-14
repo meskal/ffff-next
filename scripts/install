@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Copyright (C) 2015 Tobias Klaus - All Rights Reserved
+# Permission to copy and modify is granted under the GPL license
+
+#Small script to install ff-firmware to a plain openwrt repository as an "environment"
+#this script should only be called once. After that normal git operations on the ff-firmware
+#dir "env" and the openwrt package should be used.
+
+#Call this script from the base of your openwrt git checkout
+
+FFFEEDNAME=FreiFunk
+
+source "$(dirname "$0")/functions.sh"
+source "$(dirname "$0")/config"
+
+getBaseDirs "$1"
+FFPACKAGEDIR=$FFBASE/packages
+FEEDSCRIPT=$OWBASE/scripts/feeds
+
+installFeed "$FFPACKAGEDIR" "$FFFEEDNAME"
+
+echo Updating all packages
+echo
+$FEEDSCRIPT update -a
+
+#make sure the repositories are reset to desired revisions
+resetRepos
+
+#apply patches
+patchRepos
+
+#recreate index for packages
+$FEEDSCRIPT update -i
+
+#make all packages available for configuration
+$FEEDSCRIPT install -a
+
+
+DOTCONFIG="y"
+if [[ -f $OWBASE/.config ]] ; then
+    echo
+    echo "Do you really want to override $OWBASE/.config? Type \"y\". Anything else will abort here."
+    read OVERRIDE
+    if [[ ! ${OVERRIDE} = "y" ]] ; then
+        DOTCONFIG="n"
+    fi
+fi
+echo DOTCONFIG: $DOTCONFIG
+if [[ $DOTCONFIG = "y" ]] ; then
+    #make sure to build our packages
+    cat "$FFBASE/package.config" > "$OWBASE/.config"
+
+    if [[ -n $MYBOARD ]] ; then
+        boardConfig "$MYBOARD" >> "$OWBASE/.config"
+    fi
+fi
+
+#TODO: introduce general flag $FAILED to indicate that something on the way went wrong
+if [[ -z $FAILEDPATCHES ]] ; then
+    echo All patches succesfully applied!
+fi
+
+echo Next steps:
+echo Configure for the target device:
+echo
+echo make defconfig
+echo make menuconfig
+echo
+echo Build it:
+echo
+echo make -j"$(getconf _NPROCESSORS_ONLN)"
+echo
+echo Have fun!
+

@@ -77,6 +77,10 @@ Finally start the build process
 make
 </pre>
 
+How to automate applying these patches and packages
+===================================================
+Use the script./scripts/install
+
 How to submit patches
 =====================
 Please send patches you would like to contribute to this repository to this mailinglist:
